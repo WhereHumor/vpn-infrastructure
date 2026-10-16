@@ -1,0 +1,65 @@
+---
+- name: Deploy VPN infrastructure
+  hosts: vps
+  become: yes
+
+  vars_files:
+    - vars/secrets.yml
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - curl
+          - ufw
+          - fail2ban
+          - unattended-upgrades
+        state: present
+
+    - name: Install Xray
+      shell: bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+      args:
+        creates: /usr/local/bin/xray
+
+    - name: Deploy Xray config
+      template:
+        src: xray-config.json.j2
+        dest: /usr/local/etc/xray/config.json
+        mode: '0644'
+      notify: Restart Xray
+
+    - name: Enable Xray service
+      systemd:
+        name: xray
+        enabled: yes
+        state: started
+
+    - name: Configure UFW
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - '22'
+        - '443'
+        - '8443'
+        - '9090'
+        - '9093'
+        - '3000'
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+  handlers:
+    - name: Restart Xray
+      systemd:
+        name: xray
+        state: restarted
+

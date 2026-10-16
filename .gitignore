@@ -1,0 +1,14 @@
+# Secrets
+ansible/vars/secrets.yml
+
+# Ansible
+*.retry
+.vault_pass
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

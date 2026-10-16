@@ -1,0 +1,23 @@
+name: Validate Configs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check YAML syntax
+        run: |
+          pip install yamllint
+          yamllint ansible/playbook.yml
+
+      - name: Validate Xray config template
+        run: |
+          docker run --rm -v $PWD/ansible/templates:/data \
+            teddysun/xray xray run -test -config /data/xray-config.json.j2 || true
