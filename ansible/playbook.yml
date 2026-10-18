@@ -115,6 +115,12 @@
         - { name: "Check tunnel", minute: "*/5", hour: "*", job: "/opt/scripts/check-tunnel.sh > /dev/null 2>&1" }
         - { name: "Backup configs", minute: "0", hour: "3", job: "/opt/scripts/backup-configs.sh > /dev/null 2>&1" }
 
+    - name: Obtain SSL certificate via Certbot
+      shell: certbot --nginx -d {{ nginx_domain }} --non-interactive --agree-tos --register-unsafely-without-email
+      args:
+        creates: /etc/letsencrypt/live/{{ nginx_domain }}/fullchain.pem
+      notify: Restart Nginx
+
   handlers:
     - name: Restart Xray
       systemd:

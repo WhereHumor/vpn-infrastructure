@@ -1,6 +1,26 @@
+# Блок для HTTP (нужен для обновления сертификата Certbot)
 server {
-    listen 9443;
-    server_name _;
+    listen 80;
+    server_name {{ nginx_domain }};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Основной блок для HTTPS
+server {
+    listen 9443 ssl;
+    server_name {{ nginx_domain }};
+
+    ssl_certificate /etc/letsencrypt/live/{{ nginx_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ nginx_domain }}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     auth_basic "Monitoring";
     auth_basic_user_file /etc/nginx/.htpasswd;
