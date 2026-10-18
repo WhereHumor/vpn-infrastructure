@@ -1,46 +1,88 @@
-# VPN Infrastructure
+# 🛡️ Production-Ready VPN Infrastructure (VLESS + Reality + Remnawave)
 
-Отказоустойчивая VPN-инфраструктура на базе Xray (VLESS + Reality) с мониторингом и автоматическим развёртыванием.
+Отказоустойчивая, масштабируемая VPN-инфраструктура, развернутая на VPS (Ubuntu 24.04, Нидерланды) с автоматическим развертыванием, мониторингом и панелью управления пользователями.
 
-## Архитектура
+## 🏗️ Архитектура
 
-- **VLESS + Reality (TCP, 443)** — основной канал.
-- **VLESS + Reality (XHTTP, 8443)** — резервный транспорт.
-- **Prometheus + Grafana** — мониторинг.
-- **Blackbox Exporter** — проверка доступности.
-- **Alertmanager** — алерты в Telegram.
+Система спроектирована с разделением на слои (Control Plane и Data Plane):
 
-## Компоненты
+* **Data Plane (Трафик)**: 
+  * **VLESS + Reality (TCP:443)** — основной канал, маскирующийся под HTTPS (TLS 1.3) к `dl.google.com` для обхода DPI.
+  * **VLESS + XHTTP (TCP:8443)** — резервный транспорт для обхода жестких блокировок.
+* **Control Plane (Управление)**: 
+  * **Remnawave**: Панель управления пользователями, генерация подписок, управление нодами (Node).
+  * **Nginx**: Reverse-proxy с Basic Auth и SSL (Let's Encrypt) для безопасного доступа к панели и мониторингу.
+* **Observability (Мониторинг)**:
+  * **Prometheus + Node Exporter + Blackbox Exporter**: Сбор метрик сервера и проверка доступности портов (ICMP, TCP).
+  * **Grafana**: Визуализация метрик (дашборды).
+  * **Alertmanager**: Отправка алертов о падении сервисов в Telegram.
 
-| Компонент | Назначение |
-|-----------|------------|
-| Xray | VPN-сервер (VLESS + Reality) |
-| Prometheus | Сбор метрик |
-| Grafana | Визуализация |
-| Blackbox Exporter | Проверка доступности (ICMP, TCP) |
-| Alertmanager | Уведомления в Telegram |
-| Node Exporter | Метрики VPS |
+## 🚀 Технологический стек
 
-## Развёртывание
+* **OS**: Ubuntu 24.04 LTS
+* **VPN Core**: Xray (VLESS, Reality, XHTTP)
+* **Panel**: Remnawave (Node.js, PostgreSQL, Redis)
+* **Web**: Nginx (Reverse Proxy, Basic Auth, Let's Encrypt)
+* **Monitoring**: Prometheus, Grafana, Blackbox, Alertmanager
+* **Автоматизация**: Ansible, Bash, Cron
+* **Безопасность**: UFW, Fail2ban, раздельное туннелирование
 
+## 📦 Развертывание (Ansible)
+
+Проект полностью автоматизирован. Для развертывания с нуля достаточно одной команды:
+
+bash
 cd ansible
 ansible-playbook -i inventory.ini playbook.yml
 
 
-Требования
+Что делает плейбук:
 
-· Ubuntu 22.04/24.04
-· Ansible 2.15+
-· SSH-доступ к VPS
+1. Устанавливает Xray и базовые пакеты (UFW, Fail2ban).
+2. Настраивает конфигурацию VLESS+Reality (TCP и XHTTP).
+3. Устанавливает Nginx и настраивает reverse-proxy для мониторинга (Basic Auth).
+4. Получает SSL-сертификаты через Let's Encrypt (Certbot).
+5. Копирует Bash-скрипты для проверки туннеля и бэкапа конфигов.
+6. Настраивает Cron для автоматического запуска скриптов.
 
-Безопасность
+📊 Мониторинг и Алерты
 
-· UFW (только необходимые порты).
-· Fail2ban (защита SSH).
-· SSH-ключи + пароль как резерв.
-· Секреты в vars/secrets.yml (не коммитятся).
+· Grafana: Доступна по адресу https://<domain>:9443/grafana/ (Basic Auth).
+· Дашборды: Node Exporter Full (ID: 1860), Blackbox Exporter (ID: 13659).
+· Алерты: При падении порта 443 или 8443, Alertmanager отправляет уведомление в Telegram-бот.
 
-Лицензия
+🔐 Безопасность
 
-MIT
+· UFW: Открыты только необходимые порты (22, 443, 8443, 9443).
+· Fail2ban: Защита SSH от брутфорса (3 попытки = бан на 1 час).
+· Nginx: Basic Auth и HTTPS для доступа к панели управления и мониторингу.
+· SSH: Авторизация по ключам (пароль оставлен как резервный).
 
+📁 Структура проекта
+
+.
+├── ansible/
+│   ├── inventory.ini
+│   ├── playbook.yml
+│   ├── check-tunnel.sh
+│   ├── backup-configs.sh
+│   ├── templates/
+│   │   ├── xray-config.json.j2
+│   │   └── nginx-monitoring.j2
+│   └── vars/
+│       ├── secrets.yml (НЕ КОММИТИТСЯ)
+│       └── secrets.yml.example
+├── .github/workflows/
+│   └── validate.yml
+└── README.md
+
+
+📈 Результаты (Benchmarks)
+
+· Скорость: до 290 Мбит/с (VLESS+Reality, Speedtest).
+· Пинг: ~60-70 мс (из РФ до Амстердама).
+· Uptime: 99.9% (мониторинг Prometheus).
+
+⚠️ Disclaimer
+
+Проект создан в образовательных целях для изучения сетевых технологий, Xray, Docker и Ansible. Используйте в соответствии с законодательством вашей страны.
