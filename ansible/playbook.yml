@@ -47,9 +47,7 @@
         - '22'
         - '443'
         - '8443'
-        - '9090'
-        - '9093'
-        - '3000'
+        - '9443'      # ← Nginx (reverse-proxy)
 
     - name: Enable UFW
       ufw:
@@ -57,9 +55,74 @@
         policy: deny
         direction: incoming
 
+    - name: Install Nginx and apache2-utils
+      apt:
+        name:
+          - nginx
+          - apache2-utils
+        state: present
+
+    - name: Create htpasswd for monitoring
+      shell: htpasswd -bc /etc/nginx/.htpasswd {{ nginx_user }} {{ nginx_password }}
+      args:
+        creates: /etc/nginx/.htpasswd
+
+    - name: Deploy Nginx monitoring config
+      template:
+        src: nginx-monitoring.j2
+        dest: /etc/nginx/sites-available/monitoring
+        mode: '0644'
+      notify: Restart Nginx
+
+    - name: Enable Nginx monitoring site
+      file:
+        src: /etc/nginx/sites-available/monitoring
+        dest: /etc/nginx/sites-enabled/monitoring
+        state: link
+      notify: Restart Nginx
+
+    - name: Remove default Nginx site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Restart Nginx
+
+    - name: Create scripts directory
+      file:
+        path: /opt/scripts
+        state: directory
+        mode: '0755'
+
+    - name: Deploy check-tunnel script
+      copy:
+        src: check-tunnel.sh
+        dest: /opt/scripts/check-tunnel.sh
+        mode: '0755'
+
+    - name: Deploy backup-configs script
+      copy:
+        src: backup-configs.sh
+        dest: /opt/scripts/backup-configs.sh
+        mode: '0755'
+
+    - name: Setup cron jobs
+      cron:
+        name: "{{ item.name }}"
+        minute: "{{ item.minute }}"
+        hour: "{{ item.hour }}"
+        job: "{{ item.job }}"
+      loop:
+        - { name: "Check tunnel", minute: "*/5", hour: "*", job: "/opt/scripts/check-tunnel.sh > /dev/null 2>&1" }
+        - { name: "Backup configs", minute: "0", hour: "3", job: "/opt/scripts/backup-configs.sh > /dev/null 2>&1" }
+
   handlers:
     - name: Restart Xray
       systemd:
         name: xray
+        state: restarted
+
+    - name: Restart Nginx
+      systemd:
+        name: nginx
         state: restarted
 
