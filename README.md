@@ -60,17 +60,17 @@ ansible-playbook -i inventory.ini remnawave-playbook.yml
 · Алерты: Настроены уведомления в Telegram на падение портов VPN, падение Панели, перезагрузку бота и высокое потребление RAM контейнерами.
 
 📁 Структура проекта
-.
-├── ansible/
-│   ├── playbook.yml
-│   ├── remnawave-playbook.yml
-│   └── vars/
-├── telegram-bot/
-│   ├── bot.py
-│   └── .env
-├── .github/
-│   └── workflows/
-└── README.md
+.                                                                                                                                        .
+├── ansible/                                                                                                                             .
+│   ├── playbook.yml                                                                                                                     .
+│   ├── remnawave-playbook.yml                                                                                                           .
+│   └── vars/                                                                                                                            .
+├── telegram-bot/                                                                                                                        .
+│   ├── bot.py                                                                                                                           .
+│   └── .env                                                                                                                             .
+├── .github/                                                                                                                             .
+│   └── workflows/                                                                                                                       .
+└── README.md                                                                                                                            .
 
 
 ⚠️ Disclaimer
