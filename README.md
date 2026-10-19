@@ -60,19 +60,8 @@ ansible-playbook -i inventory.ini remnawave-playbook.yml
 · Алерты: Настроены уведомления в Telegram на падение портов VPN, падение Панели, перезагрузку бота и высокое потребление RAM контейнерами.
 
 📁 Структура проекта
-.                                                                                                                                        
-├── ansible/                                                                                                                             
-│   ├── playbook.yml                                                                                                                     
-│   ├── remnawave-playbook.yml                                                                              
-│   └── vars/                                                                                                                            
-├── telegram-bot/                                                                                                                        
-│   ├── bot.py                                                                                                                           
-│   └── .env                                                                                                                             
-├── .github/                                                                                                                             
-│   └── workflows/                                                                                                                       
-└── README.md                                                                                                                            
-<img width="207" height="228" alt="image" src="https://github.com/user-attachments/assets/8722deb7-195d-4297-85af-9f5dd337f9a9" />
-
+                                                                                                                         
+<img width="498" height="212" alt="image" src="https://github.com/user-attachments/assets/29055b61-f488-49c9-a85b-7cc4c46ce141" />
 
 ⚠️ Disclaimer
 
