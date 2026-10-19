@@ -10,14 +10,25 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Check YAML syntax
         run: |
           pip install yamllint
-          yamllint ansible/playbook.yml
+          # Проверяем только чистые YAML файлы, игнорируя папки с шаблонами (.j2)
+          # Используем наш конфиг .yamllint, если он есть
+          if [ -f .yamllint ]; then
+            yamllint -c .yamllint ansible/playbook.yml ansible/remnawave-playbook.yml
+          else
+            yamllint ansible/playbook.yml ansible/remnawave-playbook.yml
+          fi
 
-      - name: Validate Xray config template
+      - name: Validate Ansible Syntax
         run: |
-          docker run --rm -v $PWD/ansible/templates:/data \
-            teddysun/xray xray run -test -config /data/xray-config.json.j2 || true
+          pip install ansible
+          # Проверяем, что плейбуки синтаксически верны и Jinja2 шаблоны собираются
+          cd ansible
+          ansible-playbook -i inventory.ini.example playbook.yml --syntax-check
+          ansible-playbook -i inventory.ini.example remnawave-playbook.yml --syntax-check
+
