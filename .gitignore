@@ -12,3 +12,14 @@ ansible/vars/secrets.yml
 # OS
 .DS_Store
 Thumbs.db
+
+# Remnawave secrets and configs
+.env
+*.env
+/opt/remnawave/
+/opt/remnawave-node/
+/opt/remnawave/subscription/
+
+# Ansible Inventory (contains real IP)
+ansible/inventory.ini
+   
