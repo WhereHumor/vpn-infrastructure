@@ -1,0 +1,6 @@
+remnawave_db_password: "CHANGE_ME_STRONG_PASSWORD"
+remnawave_jwt_secret: "CHANGE_ME_JWT_SECRET"
+remnawave_app_secret: "CHANGE_ME_APP_SECRET"
+remnawave_metrics_password: "CHANGE_ME_METRICS_PASS"
+panel_domain: "panel.yourdomain.com"
+sub_domain: "sub.yourdomain.com"
