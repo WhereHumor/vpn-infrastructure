@@ -62,7 +62,7 @@ async def get_or_create_user(tg_id: int, username: str):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    waiting_msg = await message.answer("⏳ Секунду генерирую доступ...")
+    waiting_msg = await message.answer("⏳ Секунду обновляю данные...")
     
     username = message.from_user.username or "user"
     tg_id = message.from_user.id
