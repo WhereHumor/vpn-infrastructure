@@ -22,4 +22,6 @@ Thumbs.db
 
 # Ansible Inventory (contains real IP)
 ansible/inventory.ini
-   
+
+# Remnawave passwords   
+vars/remnawave_vars.yml
