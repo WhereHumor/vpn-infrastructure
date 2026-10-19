@@ -1,88 +1,79 @@
 # 🛡️ Production-Ready VPN Infrastructure (VLESS + Reality + Remnawave)
 
-Отказоустойчивая, масштабируемая VPN-инфраструктура, развернутая на VPS (Ubuntu 24.04, Нидерланды) с автоматическим развертыванием, мониторингом и панелью управления пользователями.
+Отказоустойчивая, масштабируемая VPN-инфраструктура с автоматическим развертыванием, мониторингом и Telegram-ботом для выдачи подписок.
 
-## 🏗️ Архитектура
+## 🏗️ Архитектура системы
 
-Система спроектирована с разделением на слои (Control Plane и Data Plane):
-
-* **Data Plane (Трафик)**: 
-  * **VLESS + Reality (TCP:443)** — основной канал, маскирующийся под HTTPS (TLS 1.3) к `dl.google.com` для обхода DPI.
+* **Data Plane (Трафик):** 
+  * **VLESS + Reality (TCP:443)** — основной канал, маскирующийся под TLS (обход DPI).
   * **VLESS + XHTTP (TCP:8443)** — резервный транспорт для обхода жестких блокировок.
-* **Control Plane (Управление)**: 
-  * **Remnawave**: Панель управления пользователями, генерация подписок, управление нодами (Node).
-  * **Nginx**: Reverse-proxy с Basic Auth и SSL (Let's Encrypt) для безопасного доступа к панели и мониторингу.
-* **Observability (Мониторинг)**:
-  * **Prometheus + Node Exporter + Blackbox Exporter**: Сбор метрик сервера и проверка доступности портов (ICMP, TCP).
-  * **Grafana**: Визуализация метрик (дашборды).
-  * **Alertmanager**: Отправка алертов о падении сервисов в Telegram.
+  * **Hysteria2 (UDP:443)** — экспериментальный быстрый канал на базе QUIC.
+* **Control Plane (Управление):** 
+  * **Remnawave:** Панель управления пользователями, генерация подписок, управление нодами (Docker, PostgreSQL, Redis).
+  * **Subscription Page:** Отдельный микросервис для отдачи красивых страниц подписок клиентам.
+  * **Nginx:** Reverse-proxy с SSL (Let's Encrypt) и Basic Auth для защиты панелей управления.
+* **Bot Layer (Автоматизация):** 
+  * **Telegram Bot (Python/Aiogram):** Через REST API Remnawave автоматически создает пользователей, задает лимиты (100 ГБ/мес) и выдает ссылки на подключение.
+* **Observability (Мониторинг):**
+  * **Prometheus + Grafana:** Сбор и визуализация метрик.
+  * **cAdvisor:** Мониторинг ресурсов Docker-контейнеров в реальном времени.
+  * **Alertmanager:** Уведомления в Telegram (падение сервисов, перегрузка CPU/RAM).
 
 ## 🚀 Технологический стек
 
-* **OS**: Ubuntu 24.04 LTS
-* **VPN Core**: Xray (VLESS, Reality, XHTTP)
-* **Panel**: Remnawave (Node.js, PostgreSQL, Redis)
-* **Web**: Nginx (Reverse Proxy, Basic Auth, Let's Encrypt)
-* **Monitoring**: Prometheus, Grafana, Blackbox, Alertmanager
-* **Автоматизация**: Ansible, Bash, Cron
-* **Безопасность**: UFW, Fail2ban, раздельное туннелирование
+* **OS:** Ubuntu 24.04 LTS
+* **Network:** Xray (VLESS, Reality, XHTTP), Hysteria2, Nginx, UFW, Fail2ban
+* **Infrastructure:** Docker, Docker Compose, Remnawave, PostgreSQL, Redis
+* **Monitoring:** Prometheus, Grafana, cAdvisor, Blackbox Exporter, Node Exporter
+* **Automation:** Ansible (IaC), Bash, Cron, Python (Aiogram), GitHub Actions (CI/CD)
 
-## 📦 Развертывание (Ansible)
+## 📦 Развертывание (Infrastructure as Code)
 
-Проект полностью автоматизирован. Для развертывания с нуля достаточно одной команды:
+Вся серверная часть описана в Ansible-плейбуках. Развертывание с нуля занимает несколько минут:
 
-bash
 cd ansible
 ansible-playbook -i inventory.ini playbook.yml
+ansible-playbook -i inventory.ini remnawave-playbook.yml
 
 
-Что делает плейбук:
+Что настраивается автоматически:
 
-1. Устанавливает Xray и базовые пакеты (UFW, Fail2ban).
-2. Настраивает конфигурацию VLESS+Reality (TCP и XHTTP).
-3. Устанавливает Nginx и настраивает reverse-proxy для мониторинга (Basic Auth).
-4. Получает SSL-сертификаты через Let's Encrypt (Certbot).
-5. Копирует Bash-скрипты для проверки туннеля и бэкапа конфигов.
-6. Настраивает Cron для автоматического запуска скриптов.
+1. Установка Xray, Docker, Nginx, UFW, Fail2ban.
+2. Настройка конфигурации VLESS+Reality, XHTTP, Hysteria2.
+3. Развертывание Remnawave (Панель + БД + Страница подписок) в изолированных сетях.
+4. Получение SSL-сертификатов Let's Encrypt.
+5. Настройка прав доступа и базовой безопасности.
+
+🔄 CI/CD (Continuous Deployment)
+
+Для Telegram-бота настроен пайплайн GitHub Actions. 
+При каждом git push в ветку main (если изменения затронули папку telegram-bot/):
+
+1. GitHub Actions подключается к VPS по SSH.
+2. Скачивает обновления (git pull).
+3. Перезапускает сервис бота (systemctl restart vpn-bot).
 
 📊 Мониторинг и Алерты
 
 · Grafana: Доступна по адресу https://<domain>:9443/grafana/ (Basic Auth).
-· Дашборды: Node Exporter Full (ID: 1860), Blackbox Exporter (ID: 13659).
-· Алерты: При падении порта 443 или 8443, Alertmanager отправляет уведомление в Telegram-бот.
-
-🔐 Безопасность
-
-· UFW: Открыты только необходимые порты (22, 443, 8443, 9443).
-· Fail2ban: Защита SSH от брутфорса (3 попытки = бан на 1 час).
-· Nginx: Basic Auth и HTTPS для доступа к панели управления и мониторингу.
-· SSH: Авторизация по ключам (пароль оставлен как резервный).
+· Дашборды: Node Exporter Full, cAdvisor, Blackbox.
+· Алерты: Настроены уведомления в Telegram на падение портов VPN, падение Панели, перезагрузку бота и высокое потребление RAM контейнерами.
 
 📁 Структура проекта
 
 .
-├── ansible/
-│   ├── inventory.ini
-│   ├── playbook.yml
-│   ├── check-tunnel.sh
-│   ├── backup-configs.sh
-│   ├── templates/
-│   │   ├── xray-config.json.j2
-│   │   └── nginx-monitoring.j2
-│   └── vars/
-│       ├── secrets.yml (НЕ КОММИТИТСЯ)
-│       └── secrets.yml.example
-├── .github/workflows/
-│   └── validate.yml
+├── ansible/                  # Плейбуки и шаблоны для развертывания
+│   ├── playbook.yml          # Основная инфраструктура (Xray, Nginx, UFW)
+│   ├── remnawave-playbook.yml# Развертывание панели Remnawave
+│   └── vars/                 # Переменные (секреты в .gitignore)
+├── telegram-bot/             # Python-бот для выдачи подписок
+│   ├── bot.py                # Исходный код (Aiogram)
+│   └── .env                  # Токены (в .gitignore)
+├── .github/workflows/        # CI/CD пайплайны (GitHub Actions)
 └── README.md
 
 
-📈 Результаты (Benchmarks)
-
-· Скорость: до 290 Мбит/с (VLESS+Reality, Speedtest).
-· Пинг: ~60-70 мс (из РФ до Амстердама).
-· Uptime: 99.9% (мониторинг Prometheus).
-
 ⚠️ Disclaimer
 
-Проект создан в образовательных целях для изучения сетевых технологий, Xray, Docker и Ansible. Используйте в соответствии с законодательством вашей страны.
+Проект создан в образовательных целях для изучения сетевых технологий, Docker, Ansible и CI/CD. Используйте в соответствии с законодательством вашей страны.
+
