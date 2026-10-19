@@ -1,0 +1,96 @@
+---
+- name: Deploy Remnawave Panel and Subscription Page
+  hosts: vps
+  become: yes
+
+  vars_files:
+    - vars/remnawave_vars.yml
+
+  tasks:
+    - name: Create Docker network for Remnawave
+      community.docker.docker_network:
+        name: remnawave_remnawave-network
+        state: present
+
+    - name: Create Remnawave directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /opt/remnawave
+        - /opt/remnawave/subscription
+
+    - name: Deploy Remnawave Panel docker-compose.yml
+      template:
+        src: templates_remnawave/remnawave-compose.j2
+        dest: /opt/remnawave/docker-compose.yml
+        mode: '0644'
+
+    - name: Start Remnawave Panel
+      community.docker.docker_compose_v2:
+        project_src: /opt/remnawave
+        state: present
+
+    - name: Wait for Panel to be ready
+      pause:
+        seconds: 15
+
+    - name: Deploy Subscription Page docker-compose.yml
+      template:
+        src: templates_remnawave/sub-compose.j2
+        dest: /opt/remnawave/subscription/docker-compose.yml
+        mode: '0644'
+
+    # ВАЖНО: Здесь мы создаем .env для страницы подписок.
+    # В реальности API_TOKEN нужно будет вставить вручную или через Vault.
+    - name: Deploy Subscription Page .env
+      copy:
+        dest: /opt/remnawave/subscription/.env
+        content: |
+          APP_PORT=3010
+          REMNAWAVE_PANEL_URL=http://remnawave:3000
+          REMNAWAVE_API_TOKEN=YOUR_API_TOKEN_HERE
+      # Мы не запускаем страницу подписок здесь, пока не вставим токен
+
+    - name: Create Nginx config for Panel
+      template:
+        src: templates_remnawave/nginx-panel.j2
+        dest: /etc/nginx/sites-available/remnawave-panel
+        mode: '0644'
+      notify: Restart Nginx
+
+    - name: Create Nginx config for Sub Page
+      template:
+        src: templates_remnawave/nginx-sub.j2
+        dest: /etc/nginx/sites-available/remnawave-sub
+        mode: '0644'
+      notify: Restart Nginx
+
+    - name: Enable Nginx sites
+      file:
+        src: "/etc/nginx/sites-available/{{ item }}"
+        dest: "/etc/nginx/sites-enabled/{{ item }}"
+        state: link
+      loop:
+        - remnawave-panel
+        - remnawave-sub
+      notify: Restart Nginx
+    - name: Deploy DB backup script
+      copy:
+        src: templates_remnawave/backup-db.sh
+        dest: /opt/remnawave/backup-db.sh
+        mode: '0755'
+
+    - name: Setup cron for DB backup
+      cron:
+        name: "Remnawave DB Backup"
+        minute: "30"
+        hour: "3"
+        job: "/opt/remnawave/backup-db.sh > /dev/null 2>&1"
+
+  handlers:
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted

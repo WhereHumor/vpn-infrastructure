@@ -1,0 +1,56 @@
+services:
+  remnawave-db:
+    image: postgres:16-alpine
+    container_name: remnawave-db
+    restart: always
+    environment:
+      - POSTGRES_USER=remnawave
+      - POSTGRES_PASSWORD={{ remnawave_db_password }}
+      - POSTGRES_DB=remnawave
+    volumes:
+      - remnawave_db_data:/var/lib/postgresql/data
+    networks:
+      - remnawave-network
+
+  remnawave-redis:
+    image: redis:7-alpine
+    container_name: remnawave-redis
+    restart: always
+    volumes:
+      - remnawave_redis_data:/data
+    networks:
+      - remnawave-network
+
+  remnawave:
+    image: remnawave/backend:latest
+    container_name: remnawave
+    restart: always
+    ports:
+      - "3001:3000"
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql://remnawave:{{ remnawave_db_password }}@remnawave-db:5432/remnawave
+      - REDIS_HOST=remnawave-redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - JWT_SECRET={{ remnawave_jwt_secret }}
+      - APP_URL=https://{{ panel_domain }}:9443
+      - FRONT_END_DOMAIN={{ panel_domain }}
+      - APP_SECRET={{ remnawave_app_secret }}
+      - SUB_PUBLIC_DOMAIN={{ sub_domain }}:9443
+      - METRICS_USER=admin
+      - METRICS_PASS={{ remnawave_metrics_password }}
+    depends_on:
+      - remnawave-db
+      - remnawave-redis
+    networks:
+      - remnawave-network
+
+volumes:
+  remnawave_db_data:
+  remnawave_redis_data:
+
+networks:
+  remnawave-network:
+    name: remnawave_remnawave-network
+    external: true
